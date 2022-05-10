@@ -142,6 +142,7 @@ NOTE : Don't forget double quotes to set GBBpipe path, USB serial path
   
 # Limitations
 - 8266 features **ONE Hardware break point** only, thus setting two or more break points will lead GDB to exit.
+- launch.json is an automaticaly generated file, thus changing platformio.ini configuration will erase the changes, make sure to store it somewhere else.
   
 # Enjoy
 
