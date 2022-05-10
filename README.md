@@ -18,9 +18,15 @@ gdbpipe is written in standard C (POSIX), and it works like a charm on osX and m
   
 # How to
 Prerequisit PlatformIO should be functional on your system, eg flashing, serial output OK
-Both platformio.ini & launch.json should be stored on the root fodler of your platformIO project.  
 
-edit platformIO.ini
+1. Compile gdbpipe project with your best C compiler (tested with xCode and GCC)
+```
+gcc gdbpipe.c -o gdbpipe
+```
+  
+2. Edit both platformio.ini & launch.json file, they should be stored on the root fodler of your platformIO project.  
+
+## PlatformIO.ini
 ```
 ; PlatformIO Project Configuration File
 ;
@@ -48,7 +54,7 @@ build_flags = -Og -ggdb -DGDBSTUB_BREAK_ON_INIT
   
 Two last lines are mandatory to disable optimisation, and to force GDBstub to break on init, it makes attaching processing between 8266 and GDB reliable.<p>
  
-Update the launch.json file with the following lines
+## launch.json
 ```
 // AUTOMATICALLY GENERATED FILE. PLEASE DO NOT MODIFY IT MANUALLY
 //
@@ -133,6 +139,9 @@ Make sure to repalce the following entries with your executable paths
 - "miDebuggerServerAddress": "<USB serial port>",
 - "miDebuggerArgs": "--gdb=<lx106 xtensa GDB path>",
 NOTE : Don't forget double quotes to set GBBpipe path, USB serial path 
+  
+# Limitations
+- 8266 features **ONE Hardware break point** only, thus setting two or more break points will lead GDB to exit.
   
 # Enjoy
 
