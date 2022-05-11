@@ -10,9 +10,12 @@ Goal of this project is to use 'Visual Studio Code' GDB plug'in with Espessif GD
 - display variables
 - move step by step
   
-Nevertheless, the VSC GDB plugin assmues 'main' function exists and inserts a add a “break-insert -f main" at the GDB initialisation. 'main' does not really exit on arduinon ELF program, so GDB exists right away (eg before applying any comamnds)
+Nevertheless, the VSC GDB plugin assmues 'main' function exists and inserts a add a “break-insert -f main" at the GDB initialisation. 'main' does not really exit on ELF Arduino program, so GDB exits right away (eg before applying any comamnds) :angry:
 
-The proposed solution consists of making a "proxy" in between VSC and GDB (by using pipes), and replaces/insert on the fly 'faulty' VSC commands
+The proposed solution consists of making a "proxy" in between VSC and GDB (by using pipes), and replaces/inserts on the fly 'faulty' VSC commands<p>
+Two actions are made by this program
+- replace break-insert -f main by break-insert -f loop
+- once connected, to force GDB to continue the program to run up to the 'loop' break point
   
 gdbpipe is written in standard C (POSIX), and it works like a charm on osX and most likely Unix. I didn't test it on Windows. 
   
