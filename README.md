@@ -22,7 +22,7 @@ Two actions are made by this program
 Prerequisit PlatformIO should be functional on your system, eg flashing, serial output OK. <p>
 Tested with following versions
 - Visual Studio Code - osX 1.67.1
-- Platform IO - 5.2.5 / Home 3.4.1
+- Platform IO - Core 5.2.5 / Home 3.4.1
 - PlatformIO Espressif 8266 - 3.2.0
 - GDB Native Debug - 0.26.0
 - Xtensa GDB - 3.0.4
