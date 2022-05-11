@@ -26,7 +26,7 @@ Prerequisit PlatformIO should be functional on your system, eg flashing, serial 
 ```
 gcc gdbpipe.c -o gdbpipe
 ```
-Its usage is trivial, gdb parameters describes where is located Espressif GDB
+Its usage is trivial, gdb parameters describes where Espressif GDB is located, in order to fork the process, and any extra parameters will be used by invoking GDB 
 It performs a simple pipe connection eg, any gdbpipe STDIN is forwarded to GDB STDIN, any GDB STDOUT is forwarded to gdbpipe STDOUT, with adapations in between. 
 ```
 usage: gdbpipe [--help] --gdb path [up to 20 extra GDB parametes] 
