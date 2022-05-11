@@ -26,6 +26,15 @@ Prerequisit PlatformIO should be functional on your system, eg flashing, serial 
 ```
 gcc gdbpipe.c -o gdbpipe
 ```
+Its usage is trivial, gdb parameters describes where is located Espressif GDB
+It performs a simple pipe connection eg, any gdbpipe STDIN is forwarded to GDB STDIN, any GDB STDOUT is forwarded to gdbpipe STDOUT, with adapations in between. 
+```
+usage: gdbpipe [--help] --gdb path [up to 20 extra GDB parametes] 
+options
+  -h, --help                : This message
+  -g, --gdb <path>          : GDB path
+```
+  
   
 2. Edit both platformio.ini & launch.json file, they should be stored on the root fodler of your platformIO project.  
 
@@ -85,9 +94,9 @@ Two last lines are mandatory to disable optimisation, and to force GDBstub to br
             "environment": [],
             "externalConsole": true,
             "MIMode": "gdb",
-            "miDebuggerPath": "<GDBpipe PATH>",
-            "miDebuggerServerAddress": <USB serial port>",
-            "miDebuggerArgs": "--gdb=lx106 xtensa GDB path>",
+            "miDebuggerPath": "/user/john/gdbpipe",
+            "miDebuggerServerAddress": "/dev/cu.xxx",
+            "miDebuggerArgs": "--gdb=/usr/john/Arduino/xtensa/xtensa-lx106-elf-gdb",
             "setupCommands": [
                 {
                     "text": "set remote hardware-breakpoint-limit 1"
@@ -138,10 +147,9 @@ Two last lines are mandatory to disable optimisation, and to force GDBstub to br
 }
 ```  
 Make sure to repalce the following entries with your executable paths
-- "miDebuggerPath": "<GDBpipe PATH>",
-- "miDebuggerServerAddress": "<USB serial port>",
-- "miDebuggerArgs": "--gdb=<lx106 xtensa GDB path>",
-NOTE : Don't forget double quotes to set GBBpipe path, USB serial path 
+- "miDebuggerPath"  \<GDBpipe PATH\> (between quotes)
+- "miDebuggerServerAddress" : \<USB serial port\> (between qutoes)
+- "miDebuggerArgs" : --gdb=\<lx106 xtensa GDB path\> (full option should be between quotes)
   
 # Limitations
 - 8266 features **ONE Hardware break point** only, thus setting two or more break points will lead GDB to exit.
