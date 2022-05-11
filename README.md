@@ -45,7 +45,7 @@ options
   
 2. Edit both platformio.ini & launch.json file, they are placed/created on the root folder of your platformIO project.  
 
-## PlatformIO.ini
+2.1 _PlatformIO.ini_
 ```
 ; PlatformIO Project Configuration File
 ;
@@ -73,7 +73,7 @@ build_flags = -Og -ggdb -DGDBSTUB_BREAK_ON_INIT
   
 Two last lines are mandatory for debuging. First one disable optimisation, and second one forces GDBstub to break on init, it makes attaching processing between 8266 and GDB reliable.<p>
  
-## launch.json
+2.2 _launch.json_
 ```
 // AUTOMATICALLY GENERATED FILE. PLEASE DO NOT MODIFY IT MANUALLY
 //
@@ -157,6 +157,36 @@ Make sure to repalce the following entries with your executable paths & environm
 - "miDebuggerPath"  \<GDBpipe PATH\> (between quotes)
 - "miDebuggerServerAddress" : \<USB serial port\> (between qutoes)
 - "miDebuggerArgs" : --gdb=\<lx106 xtensa GDB path\> (full option should be between quotes)
+  
+3. include GDBStub<p>
+Add GDBstub in your project, no need to make a call to gdbstub_init() in the setup
+```
+#include <Arduino.h>
+#include <GDBStub.h> 
+
+void setup()
+{
+    Serial.begin(115200);
+    Serial.printf("Starting...\n");
+}
+
+void test()
+{
+    static uint32_t cnt1 = 0;
+    Serial.printf("TEST %d\n", cnt1);
+    cnt1 += 2;
+}
+
+void loop()
+{
+    static uint32_t cnt2 = 0;
+    Serial.printf("%d\n", cnt2);
+    cnt2++;
+    test();
+    delay(500);
+}
+```
+At last add Serial.begin(115200); in your setup function to align GDB conf as defined in launch.json and your code.
   
 # Limitations
 - 8266 features **ONE Hardware break point** only, thus setting two or more break points will lead GDB to exit.
