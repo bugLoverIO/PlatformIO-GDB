@@ -2,27 +2,32 @@
 GDB connector between GDB (8266 / xtensa lx106 CPU) from Espressif and Visual Studio code with PlatformIO
 
 # Context
-A few documentation exists to describe how to use GDB with 8266<p>
-This [link](https://arduino-esp8266.readthedocs.io/en/latest/gdb.html) descibes the commands and how to use gdbstub to connect GDB to a 8266. By doing so, a step by step execution is possible. Nevertheless GDB syntax (command line) is quite strict and any mistakes hangs GDB process right away<p>
+A few documentation exists to describe how to use GDB with Espressif 8266<p>
+This [link](https://arduino-esp8266.readthedocs.io/en/latest/gdb.html) descibes the commands and how to use gdbstub to connect GDB to a 8266. By doing so, a step by step execution is possible. Nevertheless GDB syntax (command line) is quite strict and any mistake hangs GDB process right away<p>
 
-Goal of this project is to use 'Visual Studio Code' GDB plug'in with Espessif GDB instance, and use the VSC simple graphic interface to drive GDB. It allows to visualy
+Goal of this project is to use 'Visual Studio Code' GDB plug'in (Native Debug plug'in) with Espessif GDB release, and use the VSC simple graphic interface to drive GDB. It allows to visualy
 - add/remove break point
 - display variables
 - move step by step
   
-Nevertheless, the VSC GDB plugin assmues 'main' function exists and inserts a add a “break-insert -f main" at the GDB initialisation. 'main' does not really exit on ELF Arduino program, so GDB exits right away (eg before applying any comamnds) :angry:
+Nevertheless, the VSC GDB plugin assmues 'main' function exists and inserts a “break-insert -f main" at the GDB initialisation. 'main' does not really exit on ELF Arduino program, so GDB exits right away (eg before applying any comamnds) :angry:
 
-The proposed solution consists of making a "proxy" in between VSC and GDB (by using pipes), and replaces/inserts on the fly 'faulty' VSC commands<p>
+The proposed solution consists of making a "proxy" between VSC and GDB (by using pipes), and replaces/inserts on the fly 'faulty' VSC commands<p>
 Two actions are made by this program
-- replace break-insert -f main by break-insert -f loop
+- replace break-insert -f main by break-insert -f <any function>. (default being loop)
 - once connected, to force GDB to continue the program to run up to the 'loop' break point
   
-gdbpipe is written in standard C (POSIX), and it works like a charm on osX and most likely Unix. I didn't test it on Windows. 
   
 # How to
-Prerequisit PlatformIO should be functional on your system, eg flashing, serial output OK
+Prerequisit PlatformIO should be functional on your system, eg flashing, serial output OK. <p>
+Tested with following versions
+- Visual Studio Code - osX 1.67.1
+- Platform IO - 5.2.5 / Home 3.4.1
+- PlatformIO Espressif 8266 - 3.2.0
+- GDB Native Debug - 0.26.0
+- Xtensa GDB - 3.0.4
 
-1. Compile gdbpipe project with your best C compiler (tested with xCode and GCC), may work on windows 10 with cygwin or with Windows Subsystem for Linux
+1. gdbpipe is written in standard C (POSIX), and it works on osX and most likely any Linux. Compile gdbpipe.c with your C compiler (tested with xCode and GCC), and may work on windows 10 with cygwin or with Windows Subsystem for Linux
 ```
 gcc gdbpipe.c -o gdbpipe
 ```
@@ -38,7 +43,7 @@ options
   [extra GDB parameters]   : Can be anything up to 19 parameters 
 ```     
   
-2. Edit both platformio.ini & launch.json file, they should be stored on the root fodler of your platformIO project.  
+2. Edit both platformio.ini & launch.json file, they are placed/created on the root folder of your platformIO project.  
 
 ## PlatformIO.ini
 ```
@@ -66,7 +71,7 @@ build_unflags = -Os
 build_flags = -Og -ggdb -DGDBSTUB_BREAK_ON_INIT
 ```
   
-Two last lines are mandatory to disable optimisation, and to force GDBstub to break on init, it makes attaching processing between 8266 and GDB reliable.<p>
+Two last lines are mandatory for debuging. First one disable optimisation, and second one forces GDBstub to break on init, it makes attaching processing between 8266 and GDB reliable.<p>
  
 ## launch.json
 ```
@@ -148,17 +153,17 @@ Two last lines are mandatory to disable optimisation, and to force GDBstub to br
     ]
 }
 ```  
-Make sure to repalce the following entries with your executable paths
+Make sure to repalce the following entries with your executable paths & environment.
 - "miDebuggerPath"  \<GDBpipe PATH\> (between quotes)
 - "miDebuggerServerAddress" : \<USB serial port\> (between qutoes)
 - "miDebuggerArgs" : --gdb=\<lx106 xtensa GDB path\> (full option should be between quotes)
   
 # Limitations
 - 8266 features **ONE Hardware break point** only, thus setting two or more break points will lead GDB to exit.
-- launch.json is an automaticaly generated file, thus changing platformio.ini configuration will erase the changes, make sure to store it somewhere else.
+- launch.json is an automaticaly generated file, thus updating platformio.ini configuration will erase the changes, make sure to store it somewhere before any change.
 - func parameter must be a 'C' function name. It can't be <file name>:<line> syntax.
 - init parameter set to false should be used with disabling -DGDBSTUB_BREAK_ON_INIT, but then attaching GDB to the 8266 is not reliable 
-- last but not the least, xtensa GDB remains fragile, and time to time VSC "continue" button does not work. One solution seems to be 'reflash the SW'.   
+- last but not the least, xtensa GDB remains fragile, and time to time VSC "continue" button does not work as expected. One solution seems to be 'reflash the SW and try again'.   
 
 # Enjoy
 
