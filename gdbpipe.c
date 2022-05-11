@@ -7,15 +7,24 @@
 #define PIPE_READ 0
 #define PIPE_WRITE 1
 
-#define BUFF_SIZE 4096
+#define BUFF_SIZE   4096
+#define MAX_PARAMS  20
 
-const char* break_key   = "break-insert -f main\n";
-const char* connect_key = "^connected";
+const char* break_key       = "break-insert -f main\n";
+const char* connect_key     = "^connected";
+const char* continue_key    = "cont\n";
 
 int aStdinPipe[2];
 int aStdoutPipe[2];
 
-int runGDB(const char* szCommand, char*  aArguments[])
+typedef struct {
+    char*   strGDB;
+    char*   func;
+    int     gdbStubInit;
+    char**  params;
+} tContext;
+
+int runGDB(tContext* pCtx)
 {
     int nResult = 0;
     
@@ -40,13 +49,11 @@ int runGDB(const char* szCommand, char*  aArguments[])
     close(aStdoutPipe[PIPE_READ]);
     close(aStdoutPipe[PIPE_WRITE]);
     
-    printf (">>>");
-    while (aArguments[nResult]) printf("%s ",aArguments[nResult++]);
-    printf("\n");
  
-     
+    pCtx->params[0] = pCtx->strGDB;
+    
     // run GDB process
-    nResult = execv(szCommand, aArguments);
+    nResult = execv(pCtx->strGDB, pCtx->params);
     
     // if we get here, an error occurred
     printf("GDB EXIT %d\n",nResult);
@@ -54,12 +61,12 @@ int runGDB(const char* szCommand, char*  aArguments[])
 }
 
 
-int pipeGDB(int pid)
+int pipeGDB(int pid, tContext* pCtx)
 {
 
-    char* buffer;
-    struct timeval timeout;
-    fd_set readFD,writeFD;
+    char*   buffer;
+    struct  timeval timeout;
+    fd_set  readFD,writeFD;
     
     // close unused file descriptors, these are for child only
     close(aStdinPipe[PIPE_READ]);
@@ -83,9 +90,9 @@ int pipeGDB(int pid)
             nbRead = read(aStdoutPipe[PIPE_READ],buffer,BUFF_SIZE);
             if (nbRead > 0) {
                 
-                // once connected to the ESP8266, force GDB to continue to allow inseting next break-points
-                if (strnstr(buffer,connect_key,nbRead)) {
-                    write(aStdinPipe[PIPE_WRITE],"cont\n",strlen("cont\n"));
+                // once connected to the ESP8266, force GDB to continue allowing inserting next break-points IF gdbStubInit is true
+                if ( (pCtx->gdbStubInit) && (strnstr(buffer,connect_key,nbRead)) ) {
+                    write(aStdinPipe[PIPE_WRITE],continue_key,strlen(continue_key));
                 }
                 write(STDOUT_FILENO, buffer, nbRead);
             }
@@ -99,10 +106,10 @@ int pipeGDB(int pid)
             if (nbRead<0)
                 continue;
             
-            // if "break-insert -f main" is added, replaces by break-insert -f loop
+            // if "break-insert -f main" is added, replaces by break-insert -f <function>
             if (strnstr(buffer,break_key,nbRead)) {
                 char* pos = strnstr(buffer,"main",nbRead);
-                strcpy(pos,"loop\n")  ;
+                sprintf(pos, "%s\n",pCtx->func);
             }
             
             if (NULL != buffer) {
@@ -119,7 +126,7 @@ int pipeGDB(int pid)
 }
 
 
-int createGDB(const char* szCommand, char* const aArguments[]) {
+int createGDB(tContext* pCtx) {
     int nChild = 0;
     
     if (pipe(aStdinPipe) < 0) {
@@ -134,8 +141,8 @@ int createGDB(const char* szCommand, char* const aArguments[]) {
     }
     
     nChild = fork();
-    if (0 == nChild)        return runGDB(szCommand, aArguments);
-    else if (nChild > 0)    return pipeGDB(nChild);
+    if (0 == nChild)        return runGDB(pCtx);
+    else if (nChild > 0)    return pipeGDB(nChild, pCtx);
     
     // failed to create child
     close(aStdinPipe[PIPE_READ]);
@@ -149,19 +156,23 @@ int createGDB(const char* szCommand, char* const aArguments[]) {
 
 
 void usage() {
-    printf ("usage: gdbpipe [--help] --gdb path [up to 20 extra GDB parametes] \n");
+    printf ("usage: gdbpipe [--help] --gdb path [--func name] [--init true|false] [extra GDB parametes] \n");
     printf ("options\n");
-    printf ("  -h, --help                : This message\n");
-    printf ("  -g, --gdb <path>          : GDB path\n");
+    printf ("  -h, --help               : This message\n");
+    printf ("  -g, --gdb  <path>        : GDB path\n");
+    printf ("  -f, --func <string>      : Function name (in C code) to be used as 'main' subtitute (default is 'loop')\n");
+    printf ("  -i, --init true|false    : Enable/disable 'continue' to cope with GDBSTUB_BREAK_ON_INIT pragma (default is true)\n");
+    printf ("  [extra GDB parameters]   : Can be anything up to 19 parameters \n");
     printf("\n");
     abort ();
 }
 
 
-int parseParam (int argc, char **argv, char **strGDB, char **params)
+int parseParam (int argc, char **argv, tContext *myCtx)
 {
-    int c;
-    char  nbParams = 0;
+    int     c;
+    char    nbParams = 1;
+    int     value;
     
     opterr = 0;
     while (1)
@@ -169,14 +180,16 @@ int parseParam (int argc, char **argv, char **strGDB, char **params)
         
         const struct option long_options[] =
         {
-            {"help",   	    no_argument, 0, 'h'},
-            {"gdb",         required_argument, 0, 'g'},
+            {"help",   	    no_argument,        0, 'h'},
+            {"gdb",         required_argument,  0, 'g'},
+            {"init",        required_argument,  0, 'i'},
+            {"func",        required_argument,  0, 'f'},
             {0, 0, 0, 0}
         };
         /* getopt_long stores the option index here. */
         int option_index = 0;
         
-        c = getopt_long (argc, argv, "hg:", long_options, &option_index);
+        c = getopt_long (argc, argv, "hg:f:i:", long_options, &option_index);
         
         /* Detect the end of the options. */
         if (c == -1)
@@ -189,13 +202,23 @@ int parseParam (int argc, char **argv, char **strGDB, char **params)
                 break;
                                 
             case 'g':
-                *strGDB = optarg;
+                myCtx->strGDB = optarg;
                 break;
-                    
+
+            case 'f':
+                myCtx->func = optarg;
+                break;
+
+            case 'i':
+                if ( (atoi(optarg) > 0) || (strcmp(optarg,"true") == 0) )  myCtx->gdbStubInit=1;
+                else myCtx->gdbStubInit=0;
+                break;
+
+                
             case '?':
-                params[nbParams++] = argv[optind-1];
+                myCtx->params[nbParams++] = argv[optind-1];
                 if ((!argv[optind]) || (*(argv[optind]) == '-')) break;
-                params[nbParams++] = argv[optind];
+                myCtx->params[nbParams++] = argv[optind];
                 break;
                 
             default:
@@ -208,16 +231,17 @@ int parseParam (int argc, char **argv, char **strGDB, char **params)
 
 
 int main (int argc, char **argv) {
-    char* strGDB = NULL;
 
-    const char MAX_PARAMS = 20;
-    char* params[MAX_PARAMS] ;
+    tContext ctx;
+
+    ctx.strGDB      = NULL;
+    ctx.gdbStubInit = 1;
+    ctx.func        = "loop";
+    ctx.params      = malloc (sizeof(char*) * MAX_PARAMS);
+    memset(ctx.params, 0, sizeof(char*)*MAX_PARAMS);
+    parseParam (argc, argv, &ctx);
     
-    memset(params, 0, sizeof(char*)*MAX_PARAMS);
-    parseParam (argc, argv, &strGDB, &params[1]);
+    if (!ctx.strGDB) usage();
     
-    if (!strGDB) usage();
-    
-    params[0] = strGDB;
-    createGDB(strGDB, params);
+    createGDB(&ctx);
 }
