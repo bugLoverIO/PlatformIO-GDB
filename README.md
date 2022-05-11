@@ -22,19 +22,21 @@ gdbpipe is written in standard C (POSIX), and it works like a charm on osX and m
 # How to
 Prerequisit PlatformIO should be functional on your system, eg flashing, serial output OK
 
-1. Compile gdbpipe project with your best C compiler (tested with xCode and GCC)
+1. Compile gdbpipe project with your best C compiler (tested with xCode and GCC), may work on windows 10 with cygwin or with Windows Subsystem for Linux
 ```
 gcc gdbpipe.c -o gdbpipe
 ```
-Its usage is trivial, gdb parameters describes where Espressif GDB is located, in order to fork the process, and any extra parameters will be used by invoking GDB 
+Its usage is trivial, the mandatory parameter (--gdb) describes Espressif GDB path, in order to fork the process.
 It performs a simple pipe connection eg, any gdbpipe STDIN is forwarded to GDB STDIN, any GDB STDOUT is forwarded to gdbpipe STDOUT, with adapations in between. 
 ```
-usage: gdbpipe [--help] --gdb path [up to 20 extra GDB parametes] 
+usage: gdbpipe [--help] --gdb path [--func name] [--init true|false] [extra GDB parametes] 
 options
-  -h, --help                : This message
-  -g, --gdb <path>          : GDB path
-```
-  
+  -h, --help               : This message
+  -g, --gdb  <path>        : GDB path
+  -f, --func <string>      : Function name (in C code) used as 'main' subtitute (default is 'loop')
+  -i, --init true|false    : Enable/disable 'continue' to cope with GDBSTUB_BREAK_ON_INIT pragma (default is true)
+  [extra GDB parameters]   : Can be anything up to 19 parameters 
+```     
   
 2. Edit both platformio.ini & launch.json file, they should be stored on the root fodler of your platformIO project.  
 
@@ -95,7 +97,7 @@ Two last lines are mandatory to disable optimisation, and to force GDBstub to br
             "externalConsole": true,
             "MIMode": "gdb",
             "miDebuggerPath": "/user/john/gdbpipe",
-            "miDebuggerServerAddress": "/dev/cu.xxx",
+            "miDebuggerServerAddress": "/dev/cu.wchusbserialxxxx",
             "miDebuggerArgs": "--gdb=/usr/john/Arduino/xtensa/xtensa-lx106-elf-gdb",
             "setupCommands": [
                 {
@@ -154,7 +156,10 @@ Make sure to repalce the following entries with your executable paths
 # Limitations
 - 8266 features **ONE Hardware break point** only, thus setting two or more break points will lead GDB to exit.
 - launch.json is an automaticaly generated file, thus changing platformio.ini configuration will erase the changes, make sure to store it somewhere else.
-  
+- func parameter must be a 'C' function name. It can't be <file name>:<line> syntax.
+- init parameter set to false should be used with disabling -DGDBSTUB_BREAK_ON_INIT, but then attaching GDB to the 8266 is not reliable 
+- last but not the least, xtensa GDB remains fragile, and time to time VSC "continue" button does not work. One solution seems to be 'reflash the SW'.   
+
 # Enjoy
 
   
